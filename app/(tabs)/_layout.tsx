@@ -4,32 +4,46 @@ import clsx from "clsx";
 import { Redirect, Tabs } from "expo-router";
 import React from "react";
 import { useAuth } from "@clerk/expo";
-import { Image, View } from "react-native";
+import { Image, View, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const tabBar = components.tabBar;
+
+interface TabIconProps {
+  focused: boolean;
+  icon: any;
+}
+
+const TabIcon = ({ focused, icon }: TabIconProps) => {
+  return (
+    <View className="tabs-icon">
+      <View className={clsx("tabs-pill", focused && "tabs-active")}>
+        <Image
+          source={icon}
+          resizeMode="contain"
+          className="tabs-glyph"
+          style={{ width: tabBar.iconFrame, height: tabBar.iconFrame }}
+        />
+      </View>
+    </View>
+  );
+};
 
 const TabsLayout = () => {
   const { isSignedIn, isLoaded } = useAuth();
   const insets = useSafeAreaInsets();
 
-  if (!isLoaded) return null;
-  if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
-
-  const TabIcon = ({ focused, icon }: any) => {
+  if (!isLoaded) {
     return (
-      <View className="tabs-icon">
-        <View className={clsx("tabs-pill", focused && "tabs-active")}>
-          <Image
-            source={icon}
-            resizeMode="contain"
-            className="tabs-glyph"
-            style={{ width: tabBar.iconFrame, height: tabBar.iconFrame }}
-          />
-        </View>
+      <View style={{ flex: 1, backgroundColor: "#FDFCF7", justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
-  };
+  }
+  
+  if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
+
+
 
   return (
     <Tabs

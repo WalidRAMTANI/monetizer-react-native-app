@@ -16,15 +16,14 @@ export default function Page() {
 
   const handleSubmit = async () => {
     try {
-      await signUp.create({
-        firstName,
-        emailAddress,
-        password,
-      });
-
+      // @ts-ignore - Using explicit instructions from user
+      await signUp.password({ emailAddress, password });
+      await signUp.update({ firstName });
       await signUp.verifications.sendEmailCode();
     } catch (err: any) {
-      console.error(JSON.stringify(err, null, 2));
+      if (__DEV__) {
+        console.error("Sign up error:", err?.status, err?.message, err?.code);
+      }
     }
   };
 
@@ -34,12 +33,9 @@ export default function Page() {
     });
     if (signUp.status === "complete") {
       await signUp.finalize({
-        // Redirect the user to the home page after signing up
         navigate: ({ session, decorateUrl }) => {
           if (session?.currentTask) {
-            // Handle pending session tasks
-            // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
-            console.log(session?.currentTask);
+            if (__DEV__) console.log("Pending session task:", session.currentTask.type);
             return;
           }
 
@@ -52,8 +48,9 @@ export default function Page() {
         },
       });
     } else {
-      // Check why the sign-up is not complete
-      console.error("Sign-up attempt not complete:", signUp);
+      if (__DEV__) {
+        console.error("Sign-up attempt not complete. Status:", signUp.status);
+      }
     }
   };
 

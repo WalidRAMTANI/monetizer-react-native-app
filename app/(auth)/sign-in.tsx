@@ -14,47 +14,56 @@ export default function Page() {
 
   const handleSubmit = async () => {
     try {
-      const completeSignIn = await signIn.create({
+      // 1. Create signIn
+      await signIn.create({
         identifier: emailAddress,
+      });
+
+      // 2. Password step
+      const completeSignIn = await signIn.attemptFirstFactor({
+        strategy: "password",
         password,
       });
 
       if (completeSignIn.status === "complete") {
         await signIn.finalize({
-        navigate: ({ session, decorateUrl }) => {
-          if (session?.currentTask) {
-            // Handle pending session tasks
-            // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
-            console.log(session?.currentTask);
-            return;
-          }
+          navigate: ({ session, decorateUrl }) => {
+            if (session?.currentTask) {
+              if (__DEV__) console.log("Pending session task type:", session.currentTask.type);
+              return;
+            }
 
-          const url = decorateUrl("/");
-          if (url.startsWith("http")) {
-            window.location.href = url;
-          } else {
-            router.push(url as Href);
-          }
-        },
-      });
+            const url = decorateUrl("/");
+            if (url.startsWith("http")) {
+              window.location.href = url;
+            } else {
+              router.push(url as Href);
+            }
+          },
+        });
       } else if (completeSignIn.status === "needs_second_factor") {
-        // See https://clerk.com/docs/guides/development/custom-flows/authentication/multi-factor-authentication
-      } else if (completeSignIn.status === "needs_client_trust") {
-        // For other second factor strategies,
-        // see https://clerk.com/docs/guides/development/custom-flows/authentication/client-trust
         const emailCodeFactor = completeSignIn.supportedSecondFactors?.find(
-          (factor) => factor.strategy === "email_code",
+          (factor) => factor.strategy === "email_code"
         );
-
+        if (emailCodeFactor) {
+          await signIn.prepareSecondFactor({ strategy: "email_code" });
+        }
+      } else if (completeSignIn.status === "needs_client_trust") {
+        const emailCodeFactor = completeSignIn.supportedSecondFactors?.find(
+          (factor) => factor.strategy === "email_code"
+        );
         if (emailCodeFactor) {
           await signIn.mfa.sendEmailCode();
         }
       } else {
-        // Check why the sign-in is not complete
-        console.error("Sign-in attempt not complete:", completeSignIn);
+        if (__DEV__) {
+          console.error("Sign-in not complete. Status:", completeSignIn.status);
+        }
       }
     } catch (err: any) {
-      console.error(JSON.stringify(err, null, 2));
+      if (__DEV__) {
+        console.error("Sign in error:", err?.status, err?.message, err?.code);
+      }
     }
   };
 
@@ -65,9 +74,7 @@ export default function Page() {
       await signIn.finalize({
         navigate: ({ session, decorateUrl }) => {
           if (session?.currentTask) {
-            // Handle pending session tasks
-            // See https://clerk.com/docs/guides/development/custom-flows/authentication/session-tasks
-            console.log(session?.currentTask);
+            if (__DEV__) console.log("Session task type:", session.currentTask.type);
             return;
           }
 
@@ -80,8 +87,9 @@ export default function Page() {
         },
       });
     } else {
-      // Check why the sign-in is not complete
-      console.error("Sign-in attempt not complete:", signIn);
+      if (__DEV__) {
+        console.error("Sign-in attempt not complete. Status:", signIn.status);
+      }
     }
   };
 
